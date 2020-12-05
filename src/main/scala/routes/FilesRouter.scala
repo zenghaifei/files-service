@@ -53,16 +53,21 @@ class FilesRouter()(implicit ec: ExecutionContext, system: ActorSystem[_]) exten
         val fileUrlFuture: Future[String] = byteSource.runWith(fileSink)
           .map { _ =>
             val hash = HashOperations.computeHashFromStream(new FileInputStream(file), HashOperations.Sha256)
-            val fileHashPart: String = (for (i <- 0 until hash.size) yield {
-              if (i % DIR_NAME_LENGTH != 3 || i == HASH_STR_LENGTH - 1)
-                hash.charAt(i).toString()
-              else
-                s"${hash.charAt(i)}/"
-            })
+            val fileHashPart = (0 until hash.size)
+              .map {
+                case i if i % DIR_NAME_LENGTH != 3 || i == HASH_STR_LENGTH - 1 =>
+                  hash.charAt(i).toString()
+                case i =>
+                  s"${hash.charAt(i)}/"
+              }
               .mkString("")
-            val fileRelativePath = s"${fileHashPart}.${fileExtension}"
-            file.renameTo(new File(s"${fileSaveBaseDir}/${fileRelativePath}"))
-            s"${this.fileBaseUrl}/${fileRelativePath}"
+            val currentDirPath = new File("").getAbsolutePath
+            val fileDistPath = s"${currentDirPath}/${fileSaveBaseDir}/${fileHashPart}.${fileExtension}"
+            val distFile = new File(fileDistPath)
+            distFile.getParentFile.mkdirs()
+            println(s"file dist path: ${fileDistPath}")
+            file.renameTo(new File(fileDistPath))
+            s"${this.fileBaseUrl}/${hash}.${fileExtension}"
           }
         onComplete(fileUrlFuture) {
           case Success(url) =>
@@ -75,24 +80,24 @@ class FilesRouter()(implicit ec: ExecutionContext, system: ActorSystem[_]) exten
     }
   }
 
-//  private def downloadFile = (get & path("files" /) & parameter("filePath")) { filePath =>
-//    this.log.info("start downloading file..., filePath: {}", filePath)
-//    val s3File: Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] = S3.download(this.awsS3Config.bucketName, filePath)
-//    onComplete(s3File.runWith(Sink.head)) {
-//      case Success(sourceAndMetadataOpt) =>
-//        sourceAndMetadataOpt match {
-//          case None =>
-//            this.log.warn("resource not found on aws s3, filePath: {}", filePath)
-//            complete(HttpResponse(NotFound))
-//          case Some((source, metadata)) =>
-//            log.info("file metadata, filePath: {}, length: {}, last modified: {}", filePath, metadata.getContentLength, metadata.getLastModified)
-//            complete(HttpEntity(ContentTypes.NoContentType, source))
-//        }
-//      case Failure(e) =>
-//        log.warn("future fail, msg: {}, stack: {}", e.getMessage(), e.fillInStackTrace())
-//        complete(HttpResponse(InternalServerError))
-//    }
-//  }
+  //  private def downloadFile = (get & path("files" /) & parameter("filePath")) { filePath =>
+  //    this.log.info("start downloading file..., filePath: {}", filePath)
+  //    val s3File: Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] = S3.download(this.awsS3Config.bucketName, filePath)
+  //    onComplete(s3File.runWith(Sink.head)) {
+  //      case Success(sourceAndMetadataOpt) =>
+  //        sourceAndMetadataOpt match {
+  //          case None =>
+  //            this.log.warn("resource not found on aws s3, filePath: {}", filePath)
+  //            complete(HttpResponse(NotFound))
+  //          case Some((source, metadata)) =>
+  //            log.info("file metadata, filePath: {}, length: {}, last modified: {}", filePath, metadata.getContentLength, metadata.getLastModified)
+  //            complete(HttpEntity(ContentTypes.NoContentType, source))
+  //        }
+  //      case Failure(e) =>
+  //        log.warn("future fail, msg: {}, stack: {}", e.getMessage(), e.fillInStackTrace())
+  //        complete(HttpResponse(InternalServerError))
+  //    }
+  //  }
 
   //  private def deleteFile = (delete & path("oss" / "files") & parameter("filePath")) { filePath =>
   //    this.log.info("start deleting file..., filePath: {}", filePath)
