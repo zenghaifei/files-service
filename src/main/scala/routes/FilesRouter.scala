@@ -6,12 +6,12 @@ import java.util.concurrent.atomic.AtomicLong
 import akka.actor.typed.ActorSystem
 import akka.event.slf4j.SLF4JLogging
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
-import akka.http.scaladsl.model.HttpResponse
 import akka.http.scaladsl.model.StatusCodes.InternalServerError
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusCodes}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.IOResult
-import akka.stream.scaladsl.{FileIO, Sink}
+import akka.stream.scaladsl.{FileIO, Sink, Source, StreamConverters}
 import akka.util.{ByteString, Timeout}
 import commons.HashOperations
 import spray.json.{JsNumber, JsObject, JsString}
@@ -41,6 +41,19 @@ class FilesRouter()(implicit ec: ExecutionContext, system: ActorSystem[_]) exten
   val DIR_NAME_LENGTH = 4
   val HASH_STR_LENGTH = 64
 
+  private def hashToAbsolutePath(hash: String, fileExtension: String): String = {
+    val fileHashPart = (0 until hash.size)
+      .map {
+        case i if i % DIR_NAME_LENGTH != 3 || i == HASH_STR_LENGTH - 1 =>
+          hash.charAt(i).toString()
+        case i =>
+          s"${hash.charAt(i)}/"
+      }
+      .mkString("")
+    val currentDirPath = new File("").getAbsolutePath
+    s"${currentDirPath}/${fileSaveBaseDir}/${fileHashPart}.${fileExtension}"
+  }
+
   private def uploadFile = (post & path("files")) {
     this.log.info("upload request received---")
     fileUpload("file") {
@@ -53,16 +66,7 @@ class FilesRouter()(implicit ec: ExecutionContext, system: ActorSystem[_]) exten
         val fileUrlFuture: Future[String] = byteSource.runWith(fileSink)
           .map { _ =>
             val hash = HashOperations.computeHashFromStream(new FileInputStream(file), HashOperations.Sha256)
-            val fileHashPart = (0 until hash.size)
-              .map {
-                case i if i % DIR_NAME_LENGTH != 3 || i == HASH_STR_LENGTH - 1 =>
-                  hash.charAt(i).toString()
-                case i =>
-                  s"${hash.charAt(i)}/"
-              }
-              .mkString("")
-            val currentDirPath = new File("").getAbsolutePath
-            val fileDistPath = s"${currentDirPath}/${fileSaveBaseDir}/${fileHashPart}.${fileExtension}"
+            val fileDistPath = hashToAbsolutePath(hash, fileExtension)
             val distFile = new File(fileDistPath)
             distFile.getParentFile.mkdirs()
             println(s"file dist path: ${fileDistPath}")
@@ -80,24 +84,32 @@ class FilesRouter()(implicit ec: ExecutionContext, system: ActorSystem[_]) exten
     }
   }
 
-  //  private def downloadFile = (get & path("files" /) & parameter("filePath")) { filePath =>
-  //    this.log.info("start downloading file..., filePath: {}", filePath)
-  //    val s3File: Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] = S3.download(this.awsS3Config.bucketName, filePath)
-  //    onComplete(s3File.runWith(Sink.head)) {
-  //      case Success(sourceAndMetadataOpt) =>
-  //        sourceAndMetadataOpt match {
-  //          case None =>
-  //            this.log.warn("resource not found on aws s3, filePath: {}", filePath)
-  //            complete(HttpResponse(NotFound))
-  //          case Some((source, metadata)) =>
-  //            log.info("file metadata, filePath: {}, length: {}, last modified: {}", filePath, metadata.getContentLength, metadata.getLastModified)
-  //            complete(HttpEntity(ContentTypes.NoContentType, source))
-  //        }
-  //      case Failure(e) =>
-  //        log.warn("future fail, msg: {}, stack: {}", e.getMessage(), e.fillInStackTrace())
-  //        complete(HttpResponse(InternalServerError))
-  //    }
-  //  }
+  val hashAndExtensionRegex = "([0-9 | a-f | A-F]{64}).([\\d | \\w]+)".r
+
+  private def getFile = (get & path("files" / Remaining)) { fileHashAndExtension =>
+    (fileHashAndExtension match {
+      case hashAndExtensionRegex(fileHash, fileExtension) =>
+        this.log.info("start getting file..., fileHash: {}, fileExtension: {}", fileHash, fileExtension)
+        Some((fileHash, fileExtension))
+      case _ =>
+        this.log.info("illegal fileName: {}", fileHashAndExtension)
+        None
+    })
+      .flatMap { case (fileHash, fileExtension) =>
+        val targetFilePath: String = hashToAbsolutePath(fileHash, fileExtension)
+        val targetFile: File = new File(targetFilePath)
+        if (!targetFile.exists()) {
+          this.log.info("file not exist, targetFilePath: {}", targetFilePath)
+          None
+        } else {
+          val source: Source[ByteString, Future[IOResult]] = StreamConverters.fromInputStream(() => new FileInputStream(targetFile))
+          Some(complete(HttpEntity(ContentTypes.NoContentType, source)))
+        }
+      }
+      .getOrElse {
+        complete(HttpResponse(StatusCodes.NotFound))
+      }
+  }
 
   //  private def deleteFile = (delete & path("oss" / "files") & parameter("filePath")) { filePath =>
   //    this.log.info("start deleting file..., filePath: {}", filePath)
@@ -139,7 +151,7 @@ class FilesRouter()(implicit ec: ExecutionContext, system: ActorSystem[_]) exten
 
   val routes: Route = concat(
     uploadFile,
-    //    downloadFile,
+    getFile
     //    deleteFile,
     //    getFileMetadata
   )
