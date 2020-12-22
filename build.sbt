@@ -1,4 +1,4 @@
-val AppVersion = "0.4.14"
+val AppVersion = "0.1.0"
 val AkkaVersion = "2.6.8"
 val AkkaHttpVersion = "10.2.1"
 
@@ -25,10 +25,8 @@ lazy val root = (project in file(".")).
     ),
     packageName in Docker := "colinzeng/files-service",
     version in Docker := ImageVersion,
-    dockerBaseImage := "databank_openjdk8",
+    dockerBaseImage := "colinzeng/openjdk-with-tools:8u265",
     dockerEntrypoint := Seq("bin/files-service"),
     dockerExposedPorts ++= Seq(80),
-//    daemonUserUid in Docker := None,
-//    daemonUser in Docker := "root",
     aggregate in Docker := false
   ).enablePlugins(JavaServerAppPackaging)
