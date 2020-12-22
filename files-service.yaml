@@ -5,7 +5,7 @@ networks:
       name: freeriver
 services:
   files-service:
-    image: colinzeng/files-service
+    image: colinzeng/files-service:test-0.1.0
     container_name: files-service
     restart: always
     ports:
