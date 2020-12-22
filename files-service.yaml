@@ -2,29 +2,15 @@ version: "3.2"
 networks:
   default:
     external:
-      name: mpc_network
+      name: freeriver
 services:
-  oss-service:
-    image: registry.cn-zhangjiakou.aliyuncs.com/databank/oss-service:<BUILD_TAG>
-    container_name: oss-service
+  files-service:
+    image: colinzeng/files-service
+    container_name: files-service
     restart: always
     ports:
     - 9090:80
     environment:
-      - AWS_S3_BUCKET_NAME=<BUCKET_NAME>
-      - AWS_ACCESS_KEY_ID=AKIAYCUK6DTMS7IFYEG5
-      - AWS_SECRET_ACCESS_KEY=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
-      - AWS_S3_REGION=ap-southeast-1
-      - POD_NAME=none
-
-#      - AWS_S3_BUCKET_NAME=juzix-agenta
-#      - AWS_S3_BUCKET_NAME=juzix-agentb
-#      - AWS_S3_BUCKET_NAME=juzix-agentc
-
-#      # 不需要特别设置endpoint时需要将该参数注释掉
-#      - AWS_S3_ENDPOINT=http://10.112.41.250:9020
-#      - AWS_S3_BUCKET_NAME=dfaqsjxt0930
-#      - AWS_ACCESS_KEY_ID=dfaqsjxt0930
-#      - AWS_SECRET_ACCESS_KEY=1bIKLR9KlptdzmdACps/xy2+dyN+m992Ir9wPXtR
-#      - AWS_S3_REGION=cn-north-1
-#      - POD_NAME=none
+      - SERVER_ID=1
+      - FILE_BASE_DIR=files
+      - FILE_BASE_URL=http://localhost/files

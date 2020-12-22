@@ -7,11 +7,11 @@
     </appender>
 
     <appender name="RollingFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>/logs/${POD_NAME}-oss-service.log.crn</file>
+        <file>logs/files-service-${SERVER_ID}.log.crn</file>
         <append>true</append>
-        <immediateFlush>true</immediateFlush>
+        <immediateFlush>false</immediateFlush>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <fileNamePattern>/logs/${POD_NAME}-oss-service-%d{yyyyMMddHHmm}-%i.log</fileNamePattern>
+            <fileNamePattern>logs/files-service-${SERVER_ID}-%d{yyyyMMddHHmm}-%i.log</fileNamePattern>
             <maxFileSize>50MB</maxFileSize>
             <maxHistory>20</maxHistory>
             <totalSizeCap>3GB</totalSizeCap>
