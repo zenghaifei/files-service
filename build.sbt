@@ -26,7 +26,7 @@ lazy val root = (project in file(".")).
     packageName in Docker := "colinzeng/files-service",
     version in Docker := ImageVersion,
     dockerBaseImage := "colinzeng/openjdk-with-tools:8u265",
-    dockerEntrypoint := Seq("bin/files-service"),
     dockerExposedPorts ++= Seq(80),
+    daemonUser in Docker := "root",
     aggregate in Docker := false
   ).enablePlugins(JavaServerAppPackaging)

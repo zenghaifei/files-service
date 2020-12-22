@@ -9,8 +9,10 @@ services:
     container_name: files-service
     restart: always
     ports:
-    - 9090:80
+      - 9090:80
     environment:
       - SERVER_ID=1
       - FILE_BASE_DIR=files
       - FILE_BASE_URL=http://localhost/files
+    volumes:
+      - /colin/datas/files:/opt/docker/files
