@@ -86,7 +86,7 @@ class FilesRouter()(implicit ec: ExecutionContext, system: ActorSystem[_]) exten
 
   val hashAndExtensionRegex = "([0-9 | a-f | A-F]{64}).([\\d | \\w]+)".r
 
-  private def getFile = (get & path("files" / Remaining)) { fileHashAndExtension =>
+  private def getFile = (get & path("files" / "public"/ Remaining)) { fileHashAndExtension =>
     (fileHashAndExtension match {
       case hashAndExtensionRegex(fileHash, fileExtension) =>
         this.log.info("start getting file..., fileHash: {}, fileExtension: {}", fileHash, fileExtension)
