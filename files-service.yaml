@@ -13,6 +13,6 @@ services:
     environment:
       - SERVER_ID=1
       - FILE_BASE_DIR=files
-      - FILE_BASE_URL=http://localhost/files
+      - FILE_BASE_URL=http://freeriver.cn/files/public
     volumes:
       - /colin/datas/files:/opt/docker/files
