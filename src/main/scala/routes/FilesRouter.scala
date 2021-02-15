@@ -84,7 +84,7 @@ class FilesRouter()(implicit ec: ExecutionContext, system: ActorSystem[_]) exten
     }
   }
 
-  val hashAndExtensionRegex = "([0-9 | a-f | A-F]{64}).([\\d | \\w]+)".r
+  val hashAndExtensionRegex = "([0-9 | a-f | A-F]{64})\\.([\\w]+)".r
 
   private def getFile = (get & path("files" / "public"/ Remaining)) { fileHashAndExtension =>
     (fileHashAndExtension match {
